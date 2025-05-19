@@ -12,46 +12,34 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Configure storage for file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadPath = path.join(__dirname, '../uploads');
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
-});
+// In serverless environment, we can't use disk storage
+// Use memory storage instead
+const storage = multer.memoryStorage();
 
 const upload = multer({ 
   storage: storage,
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
+// Mock data for files since we can't persist to disk in serverless
+let mockFiles = [
+  {
+    filename: 'sample-arabic-1.pdf',
+    size: 1024 * 1024 * 2.5, // 2.5MB
+    uploadedAt: new Date('2025-05-15T10:30:00')
+  },
+  {
+    filename: 'sample-arabic-2.pdf',
+    size: 1024 * 1024 * 1.8, // 1.8MB
+    uploadedAt: new Date('2025-05-16T14:20:00')
+  }
+];
+
 // Routes
 app.get('/upload', (req, res) => {
   try {
-    const uploadPath = path.join(__dirname, '../uploads');
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-      return res.json({ success: true, data: [] });
-    }
-
-    const files = fs.readdirSync(uploadPath)
-      .filter(file => file.endsWith('.pdf'))
-      .map(file => {
-        const stats = fs.statSync(path.join(uploadPath, file));
-        return {
-          filename: file,
-          size: stats.size,
-          uploadedAt: stats.mtime
-        };
-      });
-
-    res.json({ success: true, data: files });
+    // Return mock files instead of reading from disk
+    res.json({ success: true, data: mockFiles });
   } catch (error) {
     console.error('Error fetching files:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch files' });
@@ -60,11 +48,19 @@ app.get('/upload', (req, res) => {
 
 app.post('/upload', upload.array('files'), (req, res) => {
   try {
-    const files = req.files.map(file => ({
-      filename: file.filename,
-      size: file.size,
-      uploadedAt: new Date()
-    }));
+    // Create mock file entries instead of saving to disk
+    const files = req.files.map(file => {
+      const mockFile = {
+        filename: Date.now() + '-' + file.originalname,
+        size: file.size,
+        uploadedAt: new Date()
+      };
+      
+      // Add to our mock files array
+      mockFiles.push(mockFile);
+      
+      return mockFile;
+    });
 
     res.json({ 
       success: true, 
@@ -81,10 +77,12 @@ app.post('/upload', upload.array('files'), (req, res) => {
 app.delete('/upload/:filename', (req, res) => {
   try {
     const { filename } = req.params;
-    const filePath = path.join(__dirname, '../uploads', filename);
-
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    
+    // Remove from mock files array instead of deleting from disk
+    const initialLength = mockFiles.length;
+    mockFiles = mockFiles.filter(file => file.filename !== filename);
+    
+    if (mockFiles.length < initialLength) {
       res.json({ success: true, message: 'File deleted successfully' });
     } else {
       res.status(404).json({ success: false, error: 'File not found' });
