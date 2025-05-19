@@ -4,6 +4,7 @@ import { AlertContext } from '../../context/AlertContext';
 import Alert from '../layout/Alert';
 import Spinner from '../layout/Spinner';
 import Progress from '../layout/Progress';
+import { API_ENDPOINTS } from '../../config/api';
 
 const Upload = () => {
   const [files, setFiles] = useState([]);
@@ -20,7 +21,7 @@ const Upload = () => {
   useEffect(() => {
     const fetchUploadedFiles = async () => {
       try {
-        const res = await axios.get('/api/upload');
+        const res = await axios.get(API_ENDPOINTS.UPLOAD.LIST);
         setUploadedFiles(res.data.data);
         setIsLoading(false);
       } catch (error) {
@@ -88,7 +89,7 @@ const Upload = () => {
     });
     
     try {
-      const res = await axios.post('/api/upload', formData, {
+      const res = await axios.post(API_ENDPOINTS.UPLOAD.UPLOAD, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         },
@@ -120,7 +121,7 @@ const Upload = () => {
   // Handle file deletion
   const handleDelete = async (filename) => {
     try {
-      await axios.delete(`/api/upload/${filename}`);
+      await axios.delete(API_ENDPOINTS.UPLOAD.DELETE(filename));
       
       setUploadedFiles(prevFiles => 
         prevFiles.filter(file => file.filename !== filename)

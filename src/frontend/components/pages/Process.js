@@ -4,16 +4,17 @@ import { AlertContext } from '../../context/AlertContext';
 import Alert from '../layout/Alert';
 import Spinner from '../layout/Spinner';
 import Progress from '../layout/Progress';
+import { API_ENDPOINTS } from '../../config/api';
 
 const Process = () => {
   const [files, setFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [ocrResult, setOcrResult] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [ocrResults, setOcrResults] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [processingProgress, setProcessingProgress] = useState(0);
-  const [activeTab, setActiveTab] = useState('preview');
-  const [editedText, setEditedText] = useState({});
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [editableText, setEditableText] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
   
   const { setAlert } = useContext(AlertContext);
   
@@ -21,7 +22,7 @@ const Process = () => {
   useEffect(() => {
     const fetchFiles = async () => {
       try {
-        const res = await axios.get('/api/upload');
+        const res = await axios.get(API_ENDPOINTS.UPLOAD.LIST);
         setFiles(res.data.data);
         setIsLoading(false);
       } catch (error) {
@@ -34,125 +35,100 @@ const Process = () => {
     fetchFiles();
   }, [setAlert]);
   
-  // Check OCR status when a file is selected
-  useEffect(() => {
-    if (selectedFile) {
-      checkOcrStatus(selectedFile.filename);
-    }
-  }, [selectedFile]);
-  
-  // Check if a file has been processed with OCR
-  const checkOcrStatus = async (filename) => {
+  // Handle file selection
+  const handleFileSelect = async (file) => {
+    setSelectedFile(file);
+    setOcrResults(null);
+    setCurrentPage(1);
+    setEditableText('');
+    setIsEditing(false);
+    
     try {
-      const res = await axios.get(`/api/ocr/status/${filename}`);
+      // Check if file has already been processed
+      const statusRes = await axios.get(API_ENDPOINTS.OCR.STATUS(file.filename));
       
-      if (res.data.status === 'completed') {
-        fetchOcrResult(filename);
+      if (statusRes.data.status === 'completed') {
+        const resultRes = await axios.get(API_ENDPOINTS.OCR.RESULT(file.filename));
+        setOcrResults(resultRes.data.data);
+        
+        if (resultRes.data.data.length > 0) {
+          setEditableText(resultRes.data.data[0].text);
+        }
       }
     } catch (error) {
       console.error('Error checking OCR status:', error);
+      // If error, we'll just proceed with processing
     }
   };
   
-  // Fetch OCR result for a file
-  const fetchOcrResult = async (filename) => {
-    try {
-      const res = await axios.get(`/api/ocr/result/${filename}`);
-      setOcrResult(res.data);
-      
-      // Initialize edited text with original OCR results
-      const initialEditedText = {};
-      res.data.data.forEach(page => {
-        initialEditedText[page.page] = page.text;
-      });
-      setEditedText(initialEditedText);
-    } catch (error) {
-      console.error('Error fetching OCR result:', error);
-      setOcrResult(null);
-    }
-  };
-  
-  // Handle file selection
-  const handleFileSelect = (file) => {
-    setSelectedFile(file);
-    setOcrResult(null);
-    setEditedText({});
-    setActiveTab('preview');
-  };
-  
-  // Process a file with OCR
-  const processFile = async () => {
+  // Process file with OCR
+  const handleProcess = async () => {
     if (!selectedFile) {
       setAlert('يرجى اختيار ملف للمعالجة', 'warning');
       return;
     }
     
     setIsProcessing(true);
-    setProcessingProgress(0);
-    
-    // Simulate progress (in a real app, this would be based on actual progress updates)
-    const progressInterval = setInterval(() => {
-      setProcessingProgress(prev => {
-        const newProgress = prev + 5;
-        return newProgress >= 95 ? 95 : newProgress;
-      });
-    }, 500);
     
     try {
-      const res = await axios.post('/api/ocr/process', {
+      const res = await axios.post(API_ENDPOINTS.OCR.PROCESS, {
         filename: selectedFile.filename
       });
       
-      clearInterval(progressInterval);
-      setProcessingProgress(100);
+      setOcrResults(res.data.data);
       
-      setTimeout(() => {
-        setOcrResult(res.data);
-        
-        // Initialize edited text with original OCR results
-        const initialEditedText = {};
-        res.data.data.forEach(page => {
-          initialEditedText[page.page] = page.text;
-        });
-        setEditedText(initialEditedText);
-        
-        setActiveTab('result');
-        setAlert('تمت معالجة الملف بنجاح', 'success');
-        setIsProcessing(false);
-      }, 1000);
+      if (res.data.data.length > 0) {
+        setEditableText(res.data.data[0].text);
+      }
+      
+      setAlert('تمت معالجة الملف بنجاح', 'success');
     } catch (error) {
-      clearInterval(progressInterval);
-      console.error('OCR processing error:', error);
+      console.error('Processing error:', error);
       setAlert('حدث خطأ أثناء معالجة الملف', 'danger');
+    } finally {
       setIsProcessing(false);
-      setProcessingProgress(0);
     }
   };
   
-  // Handle text editing
-  const handleTextEdit = (page, text) => {
-    setEditedText(prev => ({
-      ...prev,
-      [page]: text
-    }));
+  // Handle page navigation
+  const handlePageChange = (page) => {
+    if (!ocrResults || page < 1 || page > ocrResults.length) return;
+    
+    // Save any edits to the current page before switching
+    if (isEditing && currentPage !== page) {
+      saveEdits();
+    }
+    
+    setCurrentPage(page);
+    setEditableText(ocrResults[page - 1].text);
   };
   
-  // Save edited text
-  const saveEditedText = async () => {
-    // In a real application, you would send the edited text to the server
-    // For now, we'll just show a success message
-    setAlert('تم حفظ التعديلات بنجاح', 'success');
+  // Toggle edit mode
+  const toggleEditMode = () => {
+    if (isEditing) {
+      saveEdits();
+    }
+    
+    setIsEditing(!isEditing);
   };
   
-  // Format file size
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
+  // Save edits to the current page
+  const saveEdits = () => {
+    if (!ocrResults) return;
     
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const updatedResults = [...ocrResults];
+    updatedResults[currentPage - 1] = {
+      ...updatedResults[currentPage - 1],
+      text: editableText
+    };
     
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    setOcrResults(updatedResults);
+    setAlert('تم حفظ التعديلات', 'success');
+  };
+  
+  // Handle text changes in edit mode
+  const handleTextChange = (e) => {
+    setEditableText(e.target.value);
   };
   
   return (
@@ -160,9 +136,9 @@ const Process = () => {
       <h1 className="mb-3">معالجة النصوص</h1>
       <Alert />
       
-      <div className="grid">
-        <div className="col-4">
-          <div className="card">
+      <div className="row">
+        <div className="col-md-4">
+          <div className="card mb-3">
             <h2 className="mb-2">الملفات المرفوعة</h2>
             
             {isLoading ? (
@@ -174,145 +150,100 @@ const Process = () => {
                 {files.map((file, index) => (
                   <li 
                     key={index} 
-                    className={`file-item ${selectedFile && selectedFile.filename === file.filename ? 'active' : ''}`}
-                    style={{ 
-                      cursor: 'pointer',
-                      backgroundColor: selectedFile && selectedFile.filename === file.filename ? '#f0f0f0' : 'transparent'
-                    }}
+                    className={`file-item clickable ${selectedFile && selectedFile.filename === file.filename ? 'active' : ''}`}
                     onClick={() => handleFileSelect(file)}
                   >
                     <div className="file-name">{file.filename}</div>
-                    <div className="file-size">{formatFileSize(file.size)}</div>
                   </li>
                 ))}
               </ul>
             )}
           </div>
-        </div>
-        
-        <div className="col-8">
-          {selectedFile ? (
+          
+          {selectedFile && (
             <div className="card">
-              <div className="flex justify-between align-center mb-3">
-                <h2>{selectedFile.filename}</h2>
-                
-                {!isProcessing && !ocrResult && (
-                  <button 
-                    className="btn btn-primary"
-                    onClick={processFile}
-                  >
-                    معالجة الملف
-                  </button>
-                )}
-              </div>
+              <h3 className="mb-2">معالجة الملف</h3>
+              <p>الملف المحدد: <strong>{selectedFile.filename}</strong></p>
+              
+              <button 
+                className="btn btn-primary btn-block"
+                onClick={handleProcess}
+                disabled={isProcessing}
+              >
+                {isProcessing ? 'جاري المعالجة...' : 'معالجة الملف'}
+              </button>
               
               {isProcessing && (
-                <div className="mb-3">
-                  <Progress 
-                    value={processingProgress} 
-                    max={100} 
-                    label={`جاري المعالجة... ${processingProgress}%`} 
-                  />
-                </div>
+                <Progress 
+                  value={50} 
+                  max={100} 
+                  label="جاري المعالجة..." 
+                  indeterminate={true}
+                />
               )}
-              
-              <div className="tabs mb-3">
-                <div 
-                  className={`tab ${activeTab === 'preview' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('preview')}
-                >
-                  معاينة الملف
-                </div>
-                
-                {ocrResult && (
-                  <div 
-                    className={`tab ${activeTab === 'result' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('result')}
-                  >
-                    نتائج المعالجة
-                  </div>
-                )}
-                
-                {ocrResult && (
-                  <div 
-                    className={`tab ${activeTab === 'edit' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('edit')}
-                  >
-                    تحرير النص
-                  </div>
-                )}
-              </div>
-              
-              <div className="tab-content">
-                {activeTab === 'preview' && (
-                  <div className="preview-tab">
-                    <iframe 
-                      src={`/uploads/${selectedFile.filename}`}
-                      className="pdf-preview"
-                      title="PDF Preview"
-                    ></iframe>
-                  </div>
-                )}
-                
-                {activeTab === 'result' && ocrResult && (
-                  <div className="result-tab">
-                    <div className="ocr-results">
-                      {ocrResult.data.map((page, index) => (
-                        <div key={index}>
-                          {index > 0 && (
-                            <div className="page-separator">
-                              <span>صفحة {page.page}</span>
-                            </div>
-                          )}
-                          <div className="page-content">
-                            <pre style={{ 
-                              fontFamily: 'Cairo, sans-serif',
-                              whiteSpace: 'pre-wrap',
-                              direction: 'rtl'
-                            }}>
-                              {page.text}
-                            </pre>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {activeTab === 'edit' && ocrResult && (
-                  <div className="edit-tab">
-                    <div className="mb-3">
-                      <p>يمكنك تحرير النص المستخرج لتصحيح أي أخطاء في التعرف الضوئي على الحروف.</p>
-                    </div>
-                    
-                    {ocrResult.data.map((page, index) => (
-                      <div key={index} className="mb-3">
-                        <h3 className="mb-1">صفحة {page.page}</h3>
-                        <textarea
-                          className="text-editor"
-                          value={editedText[page.page] || ''}
-                          onChange={(e) => handleTextEdit(page.page, e.target.value)}
-                          dir="rtl"
-                        ></textarea>
-                      </div>
-                    ))}
-                    
-                    <button 
-                      className="btn btn-success"
-                      onClick={saveEditedText}
-                    >
-                      حفظ التعديلات
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="card text-center p-5">
-              <h3 className="mb-3">يرجى اختيار ملف للمعالجة</h3>
-              <p>اختر ملفًا من القائمة على اليمين لبدء عملية المعالجة</p>
             </div>
           )}
+        </div>
+        
+        <div className="col-md-8">
+          <div className="card">
+            <h2 className="mb-2">نتائج المعالجة</h2>
+            
+            {!selectedFile ? (
+              <p className="text-center p-3">يرجى اختيار ملف للمعالجة</p>
+            ) : isProcessing ? (
+              <Spinner text="جاري معالجة الملف..." />
+            ) : !ocrResults ? (
+              <p className="text-center p-3">لم تتم معالجة الملف بعد</p>
+            ) : (
+              <div className="ocr-results">
+                <div className="ocr-controls mb-3">
+                  <div className="pagination">
+                    <button 
+                      className="btn btn-sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage <= 1}
+                    >
+                      السابق
+                    </button>
+                    <span className="mx-2">
+                      صفحة {currentPage} من {ocrResults.length}
+                    </span>
+                    <button 
+                      className="btn btn-sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage >= ocrResults.length}
+                    >
+                      التالي
+                    </button>
+                  </div>
+                  
+                  <button 
+                    className={`btn btn-sm ${isEditing ? 'btn-success' : 'btn-primary'}`}
+                    onClick={toggleEditMode}
+                  >
+                    {isEditing ? 'حفظ التعديلات' : 'تعديل النص'}
+                  </button>
+                </div>
+                
+                <div className="ocr-text-container">
+                  {isEditing ? (
+                    <textarea 
+                      className="ocr-text-editor"
+                      value={editableText}
+                      onChange={handleTextChange}
+                      dir="rtl"
+                      rows={15}
+                    />
+                  ) : (
+                    <div className="ocr-text" dir="rtl">
+                      {editableText}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

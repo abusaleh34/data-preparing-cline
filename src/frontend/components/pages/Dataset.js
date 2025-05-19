@@ -3,37 +3,36 @@ import axios from 'axios';
 import { AlertContext } from '../../context/AlertContext';
 import Alert from '../layout/Alert';
 import Spinner from '../layout/Spinner';
+import { API_ENDPOINTS } from '../../config/api';
 
 const Dataset = () => {
   const [files, setFiles] = useState([]);
   const [datasets, setDatasets] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState([]);
-  const [datasetName, setDatasetName] = useState('dataset');
-  const [datasetFormat, setDatasetFormat] = useState('json');
+  const [outputFormat, setOutputFormat] = useState('json');
+  const [outputName, setOutputName] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-  const [isLoadingFiles, setIsLoadingFiles] = useState(true);
-  const [isLoadingDatasets, setIsLoadingDatasets] = useState(true);
   
   const { setAlert } = useContext(AlertContext);
   
-  // Fetch uploaded files and datasets on component mount
+  // Fetch processed files and existing datasets on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch uploaded files
-        const filesRes = await axios.get('/api/upload');
+        // Fetch processed files
+        const filesRes = await axios.get(API_ENDPOINTS.UPLOAD.LIST);
         setFiles(filesRes.data.data);
-        setIsLoadingFiles(false);
         
         // Fetch existing datasets
-        const datasetsRes = await axios.get('/api/dataset/list');
+        const datasetsRes = await axios.get(API_ENDPOINTS.DATASET.LIST);
         setDatasets(datasetsRes.data.data);
-        setIsLoadingDatasets(false);
+        
+        setIsLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
         setAlert('حدث خطأ أثناء جلب البيانات', 'danger');
-        setIsLoadingFiles(false);
-        setIsLoadingDatasets(false);
+        setIsLoading(false);
       }
     };
     
@@ -42,11 +41,11 @@ const Dataset = () => {
   
   // Handle file selection
   const handleFileSelect = (filename) => {
-    setSelectedFiles(prev => {
-      if (prev.includes(filename)) {
-        return prev.filter(file => file !== filename);
+    setSelectedFiles(prevSelected => {
+      if (prevSelected.includes(filename)) {
+        return prevSelected.filter(file => file !== filename);
       } else {
-        return [...prev, filename];
+        return [...prevSelected, filename];
       }
     });
   };
@@ -60,14 +59,24 @@ const Dataset = () => {
     }
   };
   
+  // Handle output format change
+  const handleFormatChange = (e) => {
+    setOutputFormat(e.target.value);
+  };
+  
+  // Handle output name change
+  const handleNameChange = (e) => {
+    setOutputName(e.target.value);
+  };
+  
   // Create dataset
-  const createDataset = async () => {
+  const handleCreateDataset = async () => {
     if (selectedFiles.length === 0) {
-      setAlert('يرجى اختيار ملفات لإنشاء مجموعة البيانات', 'warning');
+      setAlert('يرجى اختيار ملفات للتضمين في مجموعة البيانات', 'warning');
       return;
     }
     
-    if (!datasetName.trim()) {
+    if (!outputName.trim()) {
       setAlert('يرجى إدخال اسم لمجموعة البيانات', 'warning');
       return;
     }
@@ -75,19 +84,17 @@ const Dataset = () => {
     setIsCreating(true);
     
     try {
-      const res = await axios.post('/api/dataset/create', {
+      const res = await axios.post(API_ENDPOINTS.DATASET.CREATE, {
         filenames: selectedFiles,
-        format: datasetFormat,
-        outputName: datasetName
+        format: outputFormat,
+        outputName: outputName.trim()
       });
       
-      // Fetch updated datasets list
-      const datasetsRes = await axios.get('/api/dataset/list');
-      setDatasets(datasetsRes.data.data);
+      setDatasets(prevDatasets => [...prevDatasets, res.data.data]);
+      setSelectedFiles([]);
+      setOutputName('');
       
       setAlert('تم إنشاء مجموعة البيانات بنجاح', 'success');
-      setSelectedFiles([]);
-      setDatasetName('dataset');
     } catch (error) {
       console.error('Error creating dataset:', error);
       setAlert('حدث خطأ أثناء إنشاء مجموعة البيانات', 'danger');
@@ -97,25 +104,21 @@ const Dataset = () => {
   };
   
   // Delete dataset
-  const deleteDataset = async (name, format) => {
+  const handleDeleteDataset = async (name, format) => {
     try {
-      await axios.delete(`/api/dataset/${name}?format=${format}`);
+      await axios.delete(API_ENDPOINTS.DATASET.DELETE(name), {
+        params: { format }
+      });
       
-      // Update datasets list
-      setDatasets(prev => prev.filter(dataset => 
-        !(dataset.name === name && dataset.format === format)
-      ));
+      setDatasets(prevDatasets => 
+        prevDatasets.filter(dataset => !(dataset.name === name && dataset.format === format))
+      );
       
       setAlert('تم حذف مجموعة البيانات بنجاح', 'success');
     } catch (error) {
       console.error('Error deleting dataset:', error);
       setAlert('حدث خطأ أثناء حذف مجموعة البيانات', 'danger');
     }
-  };
-  
-  // Download dataset
-  const downloadDataset = (name, format) => {
-    window.open(`/api/dataset/${name}?format=${format}`, '_blank');
   };
   
   // Format file size
@@ -143,62 +146,30 @@ const Dataset = () => {
   
   return (
     <div className="dataset-page">
-      <h1 className="mb-3">مجموعات البيانات</h1>
+      <h1 className="mb-3">إنشاء مجموعات البيانات</h1>
       <Alert />
       
-      <div className="grid">
-        <div className="col-6">
+      <div className="row">
+        <div className="col-md-6">
           <div className="card mb-3">
-            <h2 className="mb-2">إنشاء مجموعة بيانات جديدة</h2>
+            <h2 className="mb-2">الملفات المعالجة</h2>
             
-            <div className="form-group">
-              <label htmlFor="datasetName">اسم مجموعة البيانات</label>
-              <input 
-                type="text" 
-                id="datasetName"
-                className="form-control"
-                value={datasetName}
-                onChange={(e) => setDatasetName(e.target.value)}
-              />
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="datasetFormat">تنسيق مجموعة البيانات</label>
-              <select 
-                id="datasetFormat"
-                className="form-control"
-                value={datasetFormat}
-                onChange={(e) => setDatasetFormat(e.target.value)}
-              >
-                <option value="json">JSON</option>
-                <option value="csv">CSV</option>
-              </select>
-            </div>
-            
-            <button 
-              className="btn btn-primary btn-block mb-3"
-              onClick={createDataset}
-              disabled={isCreating || selectedFiles.length === 0}
-            >
-              {isCreating ? 'جاري الإنشاء...' : 'إنشاء مجموعة البيانات'}
-            </button>
-            
-            <h3 className="mb-2">اختر الملفات المعالجة</h3>
-            
-            {isLoadingFiles ? (
+            {isLoading ? (
               <Spinner text="جاري تحميل الملفات..." />
             ) : files.length === 0 ? (
-              <p className="text-center p-3">لا توجد ملفات مرفوعة</p>
+              <p className="text-center p-3">لا توجد ملفات معالجة</p>
             ) : (
               <>
                 <div className="mb-2">
                   <button 
-                    className="btn btn-secondary"
+                    className="btn btn-sm btn-secondary"
                     onClick={handleSelectAll}
                   >
                     {selectedFiles.length === files.length ? 'إلغاء تحديد الكل' : 'تحديد الكل'}
                   </button>
-                  <span className="mr-2">تم تحديد {selectedFiles.length} من {files.length}</span>
+                  <span className="ml-2">
+                    تم تحديد {selectedFiles.length} من {files.length}
+                  </span>
                 </div>
                 
                 <ul className="file-list">
@@ -206,56 +177,94 @@ const Dataset = () => {
                     <li 
                       key={index} 
                       className="file-item"
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => handleFileSelect(file.filename)}
                     >
-                      <input 
-                        type="checkbox"
-                        checked={selectedFiles.includes(file.filename)}
-                        onChange={() => {}}
-                        className="mr-2"
-                      />
+                      <div className="file-checkbox">
+                        <input 
+                          type="checkbox"
+                          id={`file-${index}`}
+                          checked={selectedFiles.includes(file.filename)}
+                          onChange={() => handleFileSelect(file.filename)}
+                        />
+                        <label htmlFor={`file-${index}`}></label>
+                      </div>
                       <div className="file-name">{file.filename}</div>
-                      <div className="file-size">{formatFileSize(file.size)}</div>
                     </li>
                   ))}
                 </ul>
               </>
             )}
           </div>
+          
+          <div className="card">
+            <h2 className="mb-2">إنشاء مجموعة بيانات جديدة</h2>
+            
+            <div className="form-group mb-3">
+              <label htmlFor="outputName">اسم مجموعة البيانات:</label>
+              <input 
+                type="text"
+                id="outputName"
+                className="form-control"
+                value={outputName}
+                onChange={handleNameChange}
+                placeholder="أدخل اسمًا لمجموعة البيانات"
+              />
+            </div>
+            
+            <div className="form-group mb-3">
+              <label htmlFor="outputFormat">صيغة الإخراج:</label>
+              <select 
+                id="outputFormat"
+                className="form-control"
+                value={outputFormat}
+                onChange={handleFormatChange}
+              >
+                <option value="json">JSON</option>
+                <option value="csv">CSV</option>
+              </select>
+            </div>
+            
+            <button 
+              className="btn btn-primary btn-block"
+              onClick={handleCreateDataset}
+              disabled={isCreating || selectedFiles.length === 0 || !outputName.trim()}
+            >
+              {isCreating ? 'جاري الإنشاء...' : 'إنشاء مجموعة البيانات'}
+            </button>
+          </div>
         </div>
         
-        <div className="col-6">
+        <div className="col-md-6">
           <div className="card">
             <h2 className="mb-2">مجموعات البيانات المتاحة</h2>
             
-            {isLoadingDatasets ? (
+            {isLoading ? (
               <Spinner text="جاري تحميل مجموعات البيانات..." />
             ) : datasets.length === 0 ? (
-              <p className="text-center p-3">لا توجد مجموعات بيانات متاحة</p>
+              <p className="text-center p-3">لا توجد مجموعات بيانات</p>
             ) : (
-              <ul className="file-list">
+              <ul className="dataset-list">
                 {datasets.map((dataset, index) => (
-                  <li key={index} className="file-item">
-                    <div className="file-info">
-                      <div className="file-name">
-                        {dataset.name}.{dataset.format}
-                      </div>
-                      <div className="file-details">
-                        <span className="file-size">{formatFileSize(dataset.size)}</span>
-                        <span className="file-date mr-2">{formatDate(dataset.createdAt)}</span>
+                  <li key={index} className="dataset-item">
+                    <div className="dataset-info">
+                      <h3 className="dataset-name">{dataset.name}</h3>
+                      <div className="dataset-meta">
+                        <span className="dataset-format">{dataset.format.toUpperCase()}</span>
+                        <span className="dataset-size">{formatFileSize(dataset.size)}</span>
+                        <span className="dataset-date">{formatDate(dataset.createdAt)}</span>
                       </div>
                     </div>
-                    <div className="file-actions">
-                      <button 
-                        className="btn btn-secondary ml-1"
-                        onClick={() => downloadDataset(dataset.name, dataset.format)}
+                    <div className="dataset-actions">
+                      <a 
+                        href={`/api/dataset/download/${dataset.name}?format=${dataset.format}`}
+                        className="btn btn-sm btn-primary ml-1"
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
                         تنزيل
-                      </button>
+                      </a>
                       <button 
-                        className="btn btn-danger"
-                        onClick={() => deleteDataset(dataset.name, dataset.format)}
+                        className="btn btn-sm btn-danger"
+                        onClick={() => handleDeleteDataset(dataset.name, dataset.format)}
                       >
                         حذف
                       </button>
