@@ -1,173 +1,100 @@
 # معالج البيانات العربية (Arabic Data Processor)
 
-نظام متكامل لتحضير مجموعات بيانات من ملفات PDF العربية المصورة لتدريب نماذج الذكاء الاصطناعي.
+A comprehensive solution for preparing datasets from Arabic scanned PDF files with a user-friendly control interface.
 
-## نظرة عامة
+## Features
 
-هذا المشروع عبارة عن تطبيق ويب متكامل يوفر واجهة سهلة الاستخدام لمعالجة ملفات PDF العربية المصورة واستخراج النصوص منها باستخدام تقنية التعرف الضوئي على الحروف (OCR) المخصصة للغة العربية. يتيح النظام تنظيف وتطبيع النصوص المستخرجة وتنظيمها في تنسيقات منظمة (CSV، JSON) مناسبة لتدريب نماذج الذكاء الاصطناعي.
+- **Data Upload Interface**: Intuitive interface for uploading multiple Arabic scanned PDF files
+- **OCR Processing**: Optimized for Arabic text extraction from scanned PDFs
+- **Data Cleaning**: Automatic cleaning and normalization of extracted Arabic text
+- **Dataset Creation**: Export processed data in structured formats (JSON, CSV)
+- **Interactive Editing**: Manual correction of OCR results through an interactive editor
 
-## المميزات الرئيسية
+## Project Structure
 
-- **واجهة رفع ملفات سهلة الاستخدام**: تدعم رفع ملفات PDF متعددة في وقت واحد مع إمكانية السحب والإفلات.
-- **معالجة OCR للغة العربية**: استخراج النصوص من ملفات PDF المصورة باستخدام تقنية OCR المخصصة للغة العربية.
-- **تنظيف وتطبيع النصوص**: معالجة تلقائية للنصوص العربية المستخرجة لضمان الجودة والاتساق.
-- **تحرير تفاعلي**: إمكانية مراجعة وتحرير النصوص المستخرجة يدويًا لتصحيح أخطاء OCR.
-- **إنشاء مجموعات بيانات**: تنظيم البيانات المعالجة في تنسيقات منظمة (CSV، JSON) مناسبة للتدريب.
-- **تصدير البيانات**: تصدير مجموعات البيانات النهائية بسهولة لاستخدامها في تدريب نماذج الذكاء الاصطناعي.
-- **تتبع التقدم**: عرض مؤشرات تقدم مرئية لعمليات المعالجة المختلفة.
+```
+data-preparing-cline/
+├── public/                  # Static assets
+├── src/
+│   ├── backend/             # Express.js server
+│   │   ├── routes/          # API routes
+│   │   └── server.js        # Server entry point
+│   └── frontend/            # React frontend
+│       ├── components/      # React components
+│       ├── context/         # React context providers
+│       ├── config/          # Configuration files
+│       ├── styles/          # CSS styles
+│       ├── App.js           # Main React component
+│       └── index.js         # Frontend entry point
+├── functions/               # Netlify serverless functions
+├── uploads/                 # Directory for uploaded files
+├── .env                     # Environment variables
+├── package.json             # Project dependencies
+└── webpack.config.js        # Webpack configuration
+```
 
-## المتطلبات الأساسية
+## Installation
 
-- Node.js (الإصدار 14 أو أحدث)
-- npm (مدير حزم Node.js)
-- MongoDB (قاعدة بيانات)
-
-## التثبيت
-
-1. استنساخ المستودع:
-   ```bash
-   git clone https://github.com/yourusername/arabic-data-processor.git
-   cd arabic-data-processor
+1. Clone the repository:
+   ```
+   git clone https://github.com/abusaleh34/data-preparing-cline.git
+   cd data-preparing-cline
    ```
 
-2. تثبيت التبعيات:
-   ```bash
+2. Install dependencies:
+   ```
    npm install
    ```
 
-3. إنشاء ملف `.env` في المجلد الرئيسي وتعبئته بالمعلومات المطلوبة:
+3. Create required directories:
    ```
-   PORT=5000
-   MONGO_URI=mongodb://localhost:27017/arabic-data-processor
-   NODE_ENV=development
-   FILE_UPLOAD_PATH=./uploads
-   MAX_FILE_SIZE=10000000
-   ```
-
-4. إنشاء مجلدات التخزين:
-   ```bash
    mkdir -p uploads/processed uploads/temp uploads/datasets
    ```
 
-## تشغيل التطبيق
+4. Start the development server:
+   ```
+   npm run dev
+   ```
 
-### وضع التطوير
+## Deployment
 
-لتشغيل التطبيق في وضع التطوير (مع إعادة التحميل التلقائي):
+### Deploy to Netlify
 
-```bash
+1. Fork or clone this repository to your GitHub account
+2. Log in to [Netlify](https://app.netlify.com/)
+3. Click "New site from Git"
+4. Select your repository
+5. Configure the build settings:
+   - Build command: `npm run build`
+   - Publish directory: `build`
+6. Click "Deploy site"
+7. Once deployed, go to Site settings > Functions > Settings and set the functions directory to `functions`
+8. Set up environment variables in Site settings > Build & deploy > Environment
+
+### Local Deployment
+
+To run the application locally:
+
+```
 npm run dev
 ```
 
-هذا سيقوم بتشغيل الخادم الخلفي على المنفذ 5000 وواجهة المستخدم على المنفذ 3000.
+This will start both the backend server and the frontend development server.
 
-### وضع الإنتاج
+## Usage
 
-لبناء التطبيق للإنتاج:
+1. **Upload Files**: Navigate to the Upload page to upload PDF files
+2. **Process Files**: Go to the Process page to run OCR on uploaded files
+3. **Edit Results**: Use the interactive editor to correct OCR results
+4. **Create Datasets**: Generate structured datasets in JSON or CSV format
 
-```bash
-npm run build
-```
+## Technologies Used
 
-ثم لتشغيل التطبيق:
+- **Frontend**: React, React Router, Axios
+- **Backend**: Express.js, Multer
+- **OCR**: Tesseract.js with Arabic language support
+- **Deployment**: Netlify with serverless functions
 
-```bash
-npm start
-```
+## License
 
-## هيكل المشروع
-
-```
-arabic-data-processor/
-├── public/                  # الملفات العامة
-│   └── index.html           # قالب HTML الرئيسي
-├── src/                     # كود المصدر
-│   ├── backend/             # كود الخادم الخلفي
-│   │   ├── routes/          # مسارات API
-│   │   │   ├── uploadRoutes.js    # مسارات رفع الملفات
-│   │   │   ├── ocrRoutes.js       # مسارات معالجة OCR
-│   │   │   └── datasetRoutes.js   # مسارات مجموعات البيانات
-│   │   └── server.js        # ملف الخادم الرئيسي
-│   ├── frontend/            # كود واجهة المستخدم
-│   │   ├── components/      # مكونات React
-│   │   │   ├── layout/      # مكونات التخطيط
-│   │   │   └── pages/       # صفحات التطبيق
-│   │   ├── context/         # سياقات React
-│   │   ├── styles/          # ملفات CSS
-│   │   ├── App.js           # مكون التطبيق الرئيسي
-│   │   └── index.js         # نقطة دخول React
-│   └── utils/               # أدوات مساعدة
-├── uploads/                 # مجلد تخزين الملفات المرفوعة
-│   ├── processed/           # الملفات المعالجة
-│   ├── temp/                # ملفات مؤقتة
-│   └── datasets/            # مجموعات البيانات المنشأة
-├── .env                     # متغيرات البيئة
-├── package.json             # تبعيات المشروع
-├── webpack.config.js        # إعدادات Webpack
-└── README.md                # توثيق المشروع
-```
-
-## استخدام التطبيق
-
-### 1. رفع الملفات
-
-- انتقل إلى صفحة "رفع الملفات"
-- اسحب وأفلت ملفات PDF العربية المصورة أو انقر لاختيار الملفات
-- انقر على زر "رفع الملفات" لبدء عملية الرفع
-- يمكنك متابعة تقدم الرفع من خلال شريط التقدم
-
-### 2. معالجة النصوص
-
-- انتقل إلى صفحة "معالجة النصوص"
-- اختر ملفًا من قائمة الملفات المرفوعة
-- انقر على زر "معالجة الملف" لبدء عملية OCR
-- بعد اكتمال المعالجة، يمكنك:
-  - معاينة الملف الأصلي
-  - عرض نتائج المعالجة
-  - تحرير النص المستخرج لتصحيح أي أخطاء
-
-### 3. إنشاء مجموعات البيانات
-
-- انتقل إلى صفحة "مجموعات البيانات"
-- أدخل اسمًا لمجموعة البيانات
-- اختر تنسيق الإخراج (JSON أو CSV)
-- حدد الملفات المعالجة التي تريد تضمينها
-- انقر على زر "إنشاء مجموعة البيانات"
-- يمكنك تنزيل أو حذف مجموعات البيانات المنشأة من القائمة
-
-## تخزين البيانات
-
-- **الملفات المرفوعة**: يتم تخزينها في مجلد `uploads/`
-- **الملفات المعالجة**: يتم تخزينها في مجلد `uploads/processed/`
-- **مجموعات البيانات**: يتم تخزينها في مجلد `uploads/datasets/`
-
-## استكشاف الأخطاء وإصلاحها
-
-### مشاكل الرفع
-
-- تأكد من أن حجم الملف لا يتجاوز الحد الأقصى المسموح به (10MB افتراضيًا)
-- تأكد من أن الملف بتنسيق PDF
-
-### مشاكل المعالجة
-
-- إذا فشلت عملية OCR، حاول التأكد من جودة الملف المصور
-- تأكد من أن النص في الملف باللغة العربية وواضح
-
-### مشاكل عامة
-
-- تأكد من اتصال قاعدة البيانات MongoDB
-- تحقق من وجود مجلدات التخزين وصلاحيات الكتابة عليها
-
-## المساهمة
-
-نرحب بالمساهمات! يرجى اتباع الخطوات التالية:
-
-1. افتح issue لمناقشة التغيير الذي ترغب في إجرائه
-2. قم بعمل fork للمستودع
-3. قم بإنشاء فرع جديد للميزة الخاصة بك
-4. قم بإجراء التغييرات وإضافة الاختبارات إذا أمكن
-5. قم بإرسال طلب سحب (Pull Request)
-
-## الترخيص
-
-هذا المشروع مرخص بموجب [MIT License](LICENSE).
+This project is licensed under the MIT License.
