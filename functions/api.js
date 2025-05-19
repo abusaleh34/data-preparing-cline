@@ -32,7 +32,7 @@ const upload = multer({
 });
 
 // Routes
-app.get('/api/upload', (req, res) => {
+app.get('/upload', (req, res) => {
   try {
     const uploadPath = path.join(__dirname, '../uploads');
     if (!fs.existsSync(uploadPath)) {
@@ -58,7 +58,7 @@ app.get('/api/upload', (req, res) => {
   }
 });
 
-app.post('/api/upload', upload.array('files'), (req, res) => {
+app.post('/upload', upload.array('files'), (req, res) => {
   try {
     const files = req.files.map(file => ({
       filename: file.filename,
@@ -78,7 +78,7 @@ app.post('/api/upload', upload.array('files'), (req, res) => {
   }
 });
 
-app.delete('/api/upload/:filename', (req, res) => {
+app.delete('/upload/:filename', (req, res) => {
   try {
     const { filename } = req.params;
     const filePath = path.join(__dirname, '../uploads', filename);
@@ -96,7 +96,7 @@ app.delete('/api/upload/:filename', (req, res) => {
 });
 
 // OCR Routes
-app.get('/api/ocr/status/:filename', (req, res) => {
+app.get('/ocr/status/:filename', (req, res) => {
   // In a real app, this would check the actual status
   // For demo purposes, we'll return a random status
   const statuses = ['pending', 'processing', 'completed'];
@@ -109,7 +109,7 @@ app.get('/api/ocr/status/:filename', (req, res) => {
   });
 });
 
-app.get('/api/ocr/result/:filename', (req, res) => {
+app.get('/ocr/result/:filename', (req, res) => {
   // In a real app, this would fetch actual OCR results
   // For demo purposes, we'll return mock data
   res.json({
@@ -128,7 +128,7 @@ app.get('/api/ocr/result/:filename', (req, res) => {
   });
 });
 
-app.post('/api/ocr/process', (req, res) => {
+app.post('/ocr/process', (req, res) => {
   const { filename } = req.body;
   
   if (!filename) {
@@ -157,7 +157,7 @@ app.post('/api/ocr/process', (req, res) => {
 });
 
 // Dataset Routes
-app.get('/api/dataset/list', (req, res) => {
+app.get('/dataset/list', (req, res) => {
   // In a real app, this would fetch actual datasets
   // For demo purposes, we'll return mock data
   res.json({
@@ -179,7 +179,7 @@ app.get('/api/dataset/list', (req, res) => {
   });
 });
 
-app.post('/api/dataset/create', (req, res) => {
+app.post('/dataset/create', (req, res) => {
   const { filenames, format, outputName } = req.body;
   
   if (!filenames || !Array.isArray(filenames) || filenames.length === 0) {
@@ -208,7 +208,7 @@ app.post('/api/dataset/create', (req, res) => {
   });
 });
 
-app.delete('/api/dataset/:name', (req, res) => {
+app.delete('/dataset/:name', (req, res) => {
   const { name } = req.params;
   const { format } = req.query;
   
