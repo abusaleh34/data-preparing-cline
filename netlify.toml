@@ -3,6 +3,9 @@
   publish = "dist"
   functions = "functions"
 
+[functions]
+  directory = "functions"
+
 [dev]
   command = "npm run dev"
   port = 8888
