@@ -5,7 +5,7 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 // Base URL for API requests
 const API_BASE_URL = isDevelopment
   ? 'http://localhost:3000/api'
-  : '/api';
+  : '/.netlify/functions/api';
 
 // API endpoints
 const API_ENDPOINTS = {
