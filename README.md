@@ -66,10 +66,11 @@ data-preparing-cline/
 4. Select your repository
 5. Configure the build settings:
    - Build command: `npm run build`
-   - Publish directory: `build`
+   - Publish directory: `dist`
 6. Click "Deploy site"
-7. Once deployed, go to Site settings > Functions > Settings and set the functions directory to `functions`
-8. Set up environment variables in Site settings > Build & deploy > Environment
+7. Once deployed, go to **Site settings → Functions → Settings** and set the functions directory to `functions`
+8. Set up environment variables in **Site settings → Build & deploy → Environment**
+9. All API calls should target paths starting with `/api` (e.g. `/api/upload`). Netlify redirects these calls to the `api` serverless function automatically.
 
 ### Local Deployment
 
